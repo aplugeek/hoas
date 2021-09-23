@@ -9,7 +9,14 @@ macro_rules! middleware {
         $b($req)
     };
     ($req:tt,$a:tt,$($b:tt),*) => {
-        $a($req).map(|_| middleware!($req,$($b),*))
+        match $a($req) {
+            Ok(_) => {
+                middleware!($req,$($b),*)
+            }
+            Err(e) => {
+                Err(e)
+            }
+        }
     }
 }
 
