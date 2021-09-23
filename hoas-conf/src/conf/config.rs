@@ -9,12 +9,15 @@ pub enum Operator {
     LT,
     GTE,
     LTE,
+    IN,
 }
 
 #[derive(Serialize, PartialEq, Deserialize, Debug, Clone)]
 pub enum QueryParamKind {
     Number,
     String,
+    ArrayNumber,
+    ArrayStr,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -74,8 +77,8 @@ pub struct Metadata {
 }
 
 fn de_operator<'de, D>(deserializer: D) -> Result<Operator, D::Error>
-where
-    D: de::Deserializer<'de>,
+    where
+        D: de::Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?.to_lowercase();
     let op = match s.as_str() {
@@ -86,6 +89,7 @@ where
         "lt" => Operator::LT,
         "lte" => Operator::LTE,
         "gte" => Operator::GTE,
+        "in" => Operator::IN,
         other => {
             return Err(de::Error::custom(format!("Invalid state '{}'", other)));
         }
@@ -94,13 +98,15 @@ where
 }
 
 fn de_param_kind<'de, D>(deserializer: D) -> Result<QueryParamKind, D::Error>
-where
-    D: de::Deserializer<'de>,
+    where
+        D: de::Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?.to_lowercase();
     let op = match s.as_str() {
         "string" => QueryParamKind::String,
         "number" => QueryParamKind::Number,
+        "arraynumber" => QueryParamKind::ArrayNumber,
+        "arraystr" => QueryParamKind::ArrayStr,
         other => {
             return Err(de::Error::custom(format!(
                 "Invalid query param kind '{}'",

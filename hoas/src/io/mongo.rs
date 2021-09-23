@@ -1,11 +1,11 @@
 use crate::ctx::Context;
-use crate::io::parse_num;
+use crate::io::mongo_syntax;
 use crate::middleware::X_REQUEST_ID;
-use actix_web::dev::ServiceResponse;
+
 use actix_web::{Error, HttpRequest, HttpResponse};
 use futures::StreamExt;
 use hoas_conf::conf::Route;
-use hoas_conf::conf::{Operator, QueryParamKind};
+
 use http::StatusCode;
 use mongodb::{
     bson::{doc, Bson, Document},
@@ -60,11 +60,18 @@ pub async fn handle(
             query_maps.insert(pair[0], pair[1]);
         }
     });
-    route.filters.iter().for_each(|q| {
+
+    for q in &route.filters {
         if let Some(pv) = query_maps.get(q.name.as_str()) {
-            mongo_syntax!(q, filter, pv)
+            debug!("{:?},{},{:?}", q.operator, q.name, q.value_type);
+            if mongo_syntax(q, &mut filter, pv).is_err() {
+                return Ok(error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                    "syntax error",
+                ));
+            }
         }
-    });
+    }
     let mut opt = FindOptions::default();
     if route.pagination {
         let (page, page_size) = build_paging(&query_maps);
