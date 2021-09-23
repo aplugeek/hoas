@@ -8,6 +8,8 @@ use crate::io::handle;
 use crate::middleware::{with_print, with_trace};
 use actix_web::dev::{Service, ServiceResponse};
 
+use actix_web::http::header::CONTENT_TYPE;
+use actix_web::http::HeaderValue;
 use actix_web::{web, App as ActixApp, HttpRequest, HttpServer};
 use env_logger::Env;
 use futures::future::ok;
@@ -40,8 +42,8 @@ async fn main() -> std::io::Result<()> {
             let sreq = &mut req;
             let result = middleware!(sreq, with_trace, with_print);
             if let Err(e) = result {
-                let (r, _) = req.into_parts();
-                return ok(ServiceResponse::from_err(e, r)).boxed_local();
+                let mut sp = ServiceResponse::from_err(e, req.into_parts().0);
+                return ok(sp).boxed_local();
             }
             svc.call(req)
         });

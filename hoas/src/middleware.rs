@@ -1,7 +1,11 @@
+use actix_web::body::AnyBody;
 use actix_web::dev::ServiceRequest;
-use actix_web::http::{HeaderName, HeaderValue};
-use actix_web::ResponseError;
+use actix_web::http::header::CONTENT_TYPE;
+use actix_web::http::{header, HeaderName, HeaderValue, StatusCode};
+use actix_web::web::BytesMut;
+use actix_web::{HttpResponse, ResponseError};
 use std::fmt;
+use std::fmt::Write;
 
 #[macro_export]
 macro_rules! middleware {
@@ -20,36 +24,56 @@ macro_rules! middleware {
     }
 }
 
-pub struct MiddlewareError(String);
+pub struct MiddlewareError {
+    code: StatusCode,
+    message: String,
+}
 
 impl MiddlewareError {
-    pub fn from_str(s: &str) -> Self {
-        MiddlewareError(s.into())
+    pub fn from(code: StatusCode, s: &str) -> Self {
+        MiddlewareError {
+            code,
+            message: s.into(),
+        }
     }
 }
 
-impl ResponseError for MiddlewareError {}
+impl ResponseError for MiddlewareError {
+    fn status_code(&self) -> StatusCode {
+        self.code
+    }
+    fn error_response(&self) -> HttpResponse {
+        let mut res = HttpResponse::new(self.status_code());
+        let mut buf = BytesMut::new();
+        let _ = write!(&mut buf, "{}", self);
+        res.headers_mut()
+            .insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+        res.set_body(AnyBody::from(buf))
+    }
+}
 
 impl fmt::Debug for MiddlewareError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.0.as_str())
+        f.write_str(self.message.as_str())
     }
 }
 
 impl fmt::Display for MiddlewareError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.0.as_str())
+        let s = format!(
+            "{{\"code\":{},\"message\":{}}}",
+            self.code.as_u16(),
+            self.message
+        );
+        f.write_str(s.as_str())
     }
 }
 
-// impl Into<Error> for MiddlewareError {
-//     fn into(self) -> Error {
-//         Error::from(self)
-//     }
-// }
-
 pub const X_REQUEST_ID: &'static str = "x-request-id";
 
+/// Server middlewares
+///
+/// Err(MiddlewareError::from(StatusCode::INTERNAL_SERVER_ERROR, "hello error"))
 pub fn with_print(req: &mut ServiceRequest) -> Result<(), MiddlewareError> {
     debug!("request incoming:{:?}", req);
     Ok(())
