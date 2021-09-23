@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+metadata:
+  name: open-apis
+spec:
+  rules:
+    - path: /hoas/faults
+      method: Get
+      collection: fault_alliance
+      privileges:
+        scope: Internal
+      filters:
+        - name: metric_no
+          type: String
+          operator: eq
+        - name: device_id
+          type: Number
+          operator: eq
+        - name: source_type
+          type: String
+          operator: eq
+        - name: test
+          type: String
+          operator: like
+      pagination: true
+      transfer: lua_script
+
+    - path: /hoas/param-cp-metric
+      method: Get
+      collection: param_cp_metric
+      filters:
+        - name: device_id
+          type: Number
+          operator: eq
+      pagination: true
+
+  datasource:
+    addr: mongodb://expert:expert@192.168.1.10:27017/expert4authtest?w=majority
+    dbname: expert4authtest
+
